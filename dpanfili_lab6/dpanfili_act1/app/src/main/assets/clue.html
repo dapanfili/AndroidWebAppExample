@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html>
+
+<body>
+    <h1>Clue!</h1>
+    <div>
+        <span id="suspects">
+			</span>
+        <br>
+        <span id="rooms">				
+			</span>
+        <br>
+        <span id="weapons">
+			</span>
+    </div><br>
+    <form id="form">
+        <input type="text" placeholder="Enter your name" id="username">
+        <button type="button" onclick="welcomeUser()">
+				Submit
+			</button>
+    </form>
+    <div id="guessingDiv">
+    </div>
+    <div id="guessHistory">
+        <button type="button" onclick="showHistory()" id="historyBtn">
+				Show History
+			</button>
+        <br>
+        <span id="guessHistoryDetails" hidden>
+			</span>
+    </div>
+    <div id="showRecord">
+        <button type="button" onclick="showRecord()" id="recordBtn">
+				Show Record
+			</button>
+        <br>
+        <span id="recordDetails" hidden>
+			</span>
+    </div>
+    <script type="text/javascript">
+        var suspects = ["Kevin Gary", "Tim Lindquist", "Srividya Bansal", "Alexandra Mehlhase", "Robert Heinrichs", "Ruben Acuna", "Ashraf Gaffar", "Javier Gonzalez-Sanchez", "Ajay Bansal", "Doug Sandy"];
+        var rooms = ["Student Union", "Classroom", "Slack", "Library", "Rec Center"];
+        var weapons = ["Failing Grade", "Academic Status Report", "Baseball Bat", "Coffee Parrot", "Fiesta Parrot"];
+
+        var secretToGuess = {};
+
+        var cardsToDeal = [];
+        var usersHand = [];
+        var computersHand = [];
+
+        var username;
+
+        var gameEndStatus = false;
+        var winner = "";
+        var usersTurn = true;
+
+        // 1. Display the full set of suspects, rooms, and weapons at the top of an HTML page for the user to see.
+
+        document.getElementById("suspects").innerHTML = "Suspects: " + suspects.join(", "); // just using variable name will also work
+        document.getElementById("rooms").innerHTML = "Rooms: " + rooms.join(", "); // just using variable name will also work
+        document.getElementById("weapons").innerHTML = "Weapons: " + weapons.join(", "); // just using variable name will also work
+
+        function populateSelectOptions() {
+            var roomsSelect = document.getElementById("roomsSelect");
+            var suspectsSelect = document.getElementById("suspectsSelect");
+            var weaponsSelect = document.getElementById("weaponsSelect");
+
+            for (var i = 0; i < rooms.length; i++) {
+                var opt = rooms[i];
+                var elem = document.createElement("option");
+                elem.textContent = opt;
+                elem.value = opt;
+                roomsSelect.appendChild(elem);
+            }
+
+            for (var i = 0; i < suspects.length; i++) {
+                var opt = suspects[i];
+                var elem = document.createElement("option");
+                elem.textContent = opt;
+                elem.value = opt;
+                suspectsSelect.appendChild(elem);
+            }
+
+            for (var i = 0; i < weapons.length; i++) {
+                var opt = weapons[i];
+                var elem = document.createElement("option");
+                elem.textContent = opt;
+                elem.value = opt;
+                weaponsSelect.appendChild(elem);
+            }
+        }
+
+        function generateSecretToGuess() {
+            secretToGuess["suspect"] = suspects[Math.floor(Math.random() * suspects.length)]; // random element from suspects array
+            secretToGuess["room"] = rooms[Math.floor(Math.random() * rooms.length)]; // random element from rooms array
+            secretToGuess["weapon"] = weapons[Math.floor(Math.random() * weapons.length)]; // random element from weapons array
+        }
+
+        function generateCardsToDeal() {
+            cardsToDeal = suspects.concat(rooms).concat(weapons); // merge three arrays into one
+            // remove the secret guess items from the merged array
+            cardsToDeal.splice(cardsToDeal.indexOf(secretToGuess.suspect), 1);
+            cardsToDeal.splice(cardsToDeal.indexOf(secretToGuess.room), 1);
+            cardsToDeal.splice(cardsToDeal.indexOf(secretToGuess.weapon), 1);
+        }
+
+        function welcomeUser() {
+            generateSecretToGuess(); // generate a secret first
+            generateCardsToDeal(); // merge all three arrays and remove secret cards
+            shuffleDeck(cardsToDeal); // just for fun!				
+            dealCards(); // deal cards to user and computer
+
+            // 2. Underneath that, provide a textbox prompting for the user’s name with a Submit button. When the user’s enters her/his name, replace the form with a dynamic message saying “Welcome <name>”.
+            // 3. Display the set of “cards” the human user “holds in her/his hand”.
+
+            username = document.getElementById("username").value;
+            document.getElementById("form").innerHTML = "Welcome " + username + ",<br>You hold the cards: " + usersHand.join(", ");
+            constructGuessingDiv();
+            populateSelectOptions();
+        }
+
+        // 4. Display an HTML form that allows you to select 1 suspect, 1 weapon, and 1 room. I suggest you use a choice box for this but in fact it does not matter what you use as long as it is an HTML form.		
+        function constructGuessingDiv() {
+            var formNode = document.createElement("form");
+
+            var labelNode = document.createElement("label");
+            var textNode = document.createTextNode("Guess Room:");
+            labelNode.appendChild(textNode);
+
+            formNode.appendChild(labelNode);
+
+            var selectNode = document.createElement("select");
+            selectNode.setAttribute("id", "roomsSelect");
+
+            formNode.appendChild(selectNode);
+
+            formNode.appendChild(document.createElement("br"));
+
+            var labelNode2 = document.createElement("label");
+            var textNode2 = document.createTextNode("Guess Suspect:");
+            labelNode2.appendChild(textNode2);
+
+            formNode.appendChild(labelNode2);
+
+            var selectNode2 = document.createElement("select");
+            selectNode2.setAttribute("id", "suspectsSelect");
+
+            formNode.appendChild(selectNode2);
+
+            formNode.appendChild(document.createElement("br"));
+
+            var labelNode3 = document.createElement("label");
+            var textNode3 = document.createTextNode("Guess Weapon:");
+            labelNode3.appendChild(textNode3);
+
+            formNode.appendChild(labelNode3);
+
+            var selectNode3 = document.createElement("select");
+            selectNode3.setAttribute("id", "weaponsSelect");
+
+            formNode.appendChild(selectNode3);
+
+            formNode.appendChild(document.createElement("br"));
+
+            var btn = document.createElement("button");
+            btn.setAttribute("id", "guessBtn");
+            btn.onclick = userGuess;
+
+            var textNode4 = document.createTextNode("Guess!");
+            btn.appendChild(textNode4);
+
+            formNode.appendChild(btn);
+
+            formNode.appendChild(document.createElement("br"));
+
+            var roundResult = document.createElement("span");
+            roundResult.setAttribute("id", "roundResult");
+            formNode.appendChild(roundResult);
+
+            document.getElementById("guessingDiv").appendChild(formNode);
+        }
+
+        function constructContinueDiv() {
+            var continueDiv = document.createElement("div");
+            continueDiv.setAttribute("id", "continueDiv");
+
+            document.getElementById("guessingDiv").appendChild(continueDiv);
+
+            var continueBtn = document.createElement("button");
+            continueBtn.onclick = continueGame;
+
+            var textNode = document.createTextNode("Continue");
+            continueBtn.appendChild(textNode);
+            continueDiv.appendChild(continueBtn);
+        }
+
+        function restartGame() {
+            // empty the arrays
+            cardsToDeal = [];
+            usersHand = [];
+            computersHand = [];
+            // clear guess history
+            document.getElementById("guessHistoryDetails").innerHTML = "";
+            // remove guessingDiv's children
+            var guessingDiv = document.getElementById("guessingDiv");
+            while (guessingDiv.firstChild) {
+                guessingDiv.removeChild(guessingDiv.firstChild);
+            }
+
+            // save record
+            var today = new Date();
+            var dd = today.getDate();
+            var mm = today.getMonth() + 1; //January is 0!
+            var yyyy = today.getFullYear();
+
+            if (dd < 10) {
+                dd = '0' + dd;
+            }
+
+            if (mm < 10) {
+                mm = '0' + mm;
+            }
+
+            today = mm + '/' + dd + '/' + yyyy;
+            document.getElementById("recordDetails").innerHTML += "<br>" + "Game against - " + username + ", played on - " + today + ", winner was - " + winner;
+
+            usersTurn = true;
+            winner = "";
+            gameEndStatus = false;
+
+            document.getElementById("form").innerHTML = "<input type='text' placeholder='Enter your name' id='username'><button type='button' onclick='welcomeUser()'>Submit</button>";
+        }
+
+        // Fisher-Yates shuffle algorithm
+        function shuffleDeck(array) {
+            var currentIndex = array.length,
+                temporaryValue, randomIndex;
+
+            // While there remain elements to shuffle...
+            while (0 !== currentIndex) {
+                // Pick a remaining element...
+                randomIndex = Math.floor(Math.random() * currentIndex);
+                currentIndex -= 1;
+
+                // And swap it with the current element.
+                temporaryValue = array[currentIndex];
+                array[currentIndex] = array[randomIndex];
+                array[randomIndex] = temporaryValue;
+            }
+
+            return array;
+        }
+
+        function dealCards() {
+            for (var i = 0; i < cardsToDeal.length; i = i + 2) {
+                usersHand.push(cardsToDeal[i]);
+                computersHand.push(cardsToDeal[i + 1]);
+            }
+        }
+
+        function userGuess() {
+            var roomSelectControl = document.getElementById("roomsSelect");
+            var selectedRoom = roomSelectControl.options[roomSelectControl.selectedIndex].value;
+            var suspectSelectControl = document.getElementById("suspectsSelect");
+            var selectedSuspect = suspectSelectControl.options[suspectSelectControl.selectedIndex].value;
+            var weaponSelectControl = document.getElementById("weaponsSelect");
+            var selectedWeapon = weaponSelectControl.options[weaponSelectControl.selectedIndex].value;
+
+            document.getElementById("guessHistoryDetails").innerHTML += "<br>" + username + " guessed : " + selectedRoom + "," + selectedSuspect + "," + selectedWeapon;
+
+            if (secretToGuess.room === selectedRoom && secretToGuess.suspect === selectedSuspect && secretToGuess.weapon === selectedWeapon) {
+                // a. If the guess matches the secret, dynamically display a “win” message
+                document.getElementById("roundResult").innerHTML = username + ", You Win!!!";
+                gameEndStatus = true;
+                winner = username;
+            } else if (secretToGuess.room !== selectedRoom) { // If the guess does not match the secret, dynamically display a message stating 1) the guess did not match the secret, and 2) Reveal ONE AND ONLY ONE incorrect component of your guess.
+                document.getElementById("roundResult").innerHTML = username + "! Your guess did not match! " + selectedRoom + " is incorrect.";
+            } else if (secretToGuess.suspect !== selectedSuspect) {
+                document.getElementById("roundResult").innerHTML = username + "! Your guess did not match! " + selectedSuspect + " is incorrect.";
+            } else {
+                document.getElementById("roundResult").innerHTML = username + "! Your guess did not match! " + selectedWeapon + " is incorrect.";
+            }
+            constructContinueDiv();
+            document.getElementById("guessBtn").disabled = true;
+        }
+
+        // When the user’s (incorrect) move is complete, have the Computer make a guess. A simple random guess will do,though the program should know not to guess cards that it itself holds. Like #4, display a message indicating whether the Computer’s guess was correct or not, and a Continue button at the end. CAVEAT: The distinction here is that you are told the Computer’s guess, but should not be told the incorrect component of the guess, which is different than what happens for the user (5.b.2).
+        function computerGuess() {
+            var filteredSuspects = suspects.filter(function(x) {
+                return computersHand.indexOf(x) < 0
+            }); // the longer way is to use two for loops and remove common elements
+            var filteredRooms = rooms.filter(function(x) {
+                return computersHand.indexOf(x) < 0
+            }); // the longer way is to use two for loops and remove common elements
+            var filteredWeapons = weapons.filter(function(x) {
+                return computersHand.indexOf(x) < 0
+            }); // the longer way is to use two for loops and remove common elements
+
+            var computersGuess = {};
+            computersGuess.suspect = filteredSuspects[Math.floor(Math.random() * filteredSuspects.length)]; // random element from filteredSuspects array
+            computersGuess.room = filteredRooms[Math.floor(Math.random() * filteredRooms.length)]; // random element from filteredRooms array
+            computersGuess.weapon = filteredWeapons[Math.floor(Math.random() * filteredWeapons.length)]; // random element from filteredWeapons array
+
+            document.getElementById("guessHistoryDetails").innerHTML += "<br>computer" + " guessed : " + computersGuess.room + "," + computersGuess.suspect + "," + computersGuess.weapon;
+
+            document.getElementById("roundResult").innerHTML = "Computer's guess was - " + computersGuess.room + " " + computersGuess.suspect + " " + computersGuess.weapon;
+
+            if (secretToGuess.room === computersGuess.room && secretToGuess.suspect === computersGuess.suspect && secretToGuess.weapon === computersGuess.weapon) {
+                document.getElementById("roundResult").innerHTML += "<br>Computer Won!!!";
+                gameEndStatus = true;
+                winner = "Computer";
+            } else {
+                document.getElementById("roundResult").innerHTML += "<br>Computer's Guess was incorrect!";
+            }
+
+            constructContinueDiv();
+            document.getElementById("guessBtn").disabled = true;
+        }
+
+        function continueGame() {
+            document.getElementById("guessingDiv").removeChild(document.getElementById("continueDiv"));
+            document.getElementById("roundResult").innerHTML = "";
+            document.getElementById("guessBtn").disabled = false;
+            if (gameEndStatus) {
+                restartGame(); // restart game					
+            } else {
+                if (usersTurn) {
+                    usersTurn = false;
+                    computerGuess();
+                } else {
+                    usersTurn = true;
+                }
+            }
+        }
+
+        function showHistory() {
+            if (document.getElementById("guessHistoryDetails").hasAttribute("hidden")) {
+                document.getElementById("historyBtn").innerHTML = "Hide History";
+                document.getElementById("guessHistoryDetails").removeAttribute("hidden");
+            } else {
+                document.getElementById("guessHistoryDetails").setAttribute("hidden", true);
+                document.getElementById("historyBtn").innerHTML = "Show History";
+            }
+        }
+
+        function showRecord() {
+            if (document.getElementById("recordDetails").hasAttribute("hidden")) {
+                document.getElementById("recordBtn").innerHTML = "Hide Record";
+                document.getElementById("recordDetails").removeAttribute("hidden");
+            } else {
+                document.getElementById("recordDetails").setAttribute("hidden", true);
+                document.getElementById("recordBtn").innerHTML = "Show Record";
+            }
+        }
+
+    </script>
+</body>
+
+</html>
